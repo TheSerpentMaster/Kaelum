@@ -51,7 +51,7 @@ class Listen(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         print("processing message")
-        if (message.content).split("k.echo")[0] == "" and message.author.id in [1217433559564947561, 1399422471580680333]:
+        if "k.echo" in message.content and message.author.id in [1217433559564947561, 1399422471580680333]:
             await message.channel.send(message.content.split("k.echo")[1])
         else:
             if message.channel.id in self.listening_channels and not message.author.bot:
