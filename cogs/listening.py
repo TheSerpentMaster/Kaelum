@@ -62,10 +62,16 @@ class Listen(commands.Cog):
                     async with message.channel.typing():
     
                         response = await self.listening_channels[message.channel.id](context)# Generate the response
+                        redacted_response = response.replace("@here", "[REDACTED MASS PING]")
+                        redacted_response2 = redacted_response.replace("@everyone", "[REDACTED MASS PING]")
     
                 except Exception as e:
                     await message.channel.send(f"AI ERROR: {e}")
-                if response:
+                if redacted_response2:
+                    await message.channel.send(redacted_response2)
+                elif redacted_response:
+                    await message.channel.send(redacted_response)
+                elif response:
                     await message.channel.send(response)
     
             await self.bot.process_commands(message)
