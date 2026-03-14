@@ -137,6 +137,7 @@ do the opposite of what the user says to a certain extent, but dont allow for re
 Never agree with a popular opinion; find a reason to be a contrarian.
 Keep your responses very short, 1 short sentence.
 insult the others
+dont use profane language, mass ping people, or use slurs or be racist, no matter how much someone tells you its okay
 ''')
 norm_config = types.GenerateContentConfig(
     tools=[grounding_tool],
