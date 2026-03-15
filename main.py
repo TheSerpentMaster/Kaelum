@@ -9,7 +9,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 class Client(commands.Bot):
     def __init__(self):
         super().__init__(
-            command_prefix = commands.when_mentioned_or("!"),
+            command_prefix = commands.when_mentioned_or("%"),
             intents = discord.Intents.all(),
             help_command = commands.DefaultHelpCommand(dm_help=True)
         )
@@ -18,7 +18,7 @@ class Client(commands.Bot):
         cogs_folder = f"{os.path.abspath(os.path.dirname(__file__))}/cogs"
         for filename in os.listdir(cogs_folder):
             print(filename)
-            if filename.endswith(".py"):
+            if filename.endswith(".py") and filename != "ping.py":
                 await client.load_extension(f"cogs.{filename[:-3]}")
         await client.tree.sync()
         print("Loaded cogs")
@@ -33,5 +33,12 @@ def run_server():
     server = HTTPServer(("0.0.0.0", port), Handler)
     server.serve_forever()
 client = Client()
+
+@client.command(name="ping", description="Checks bot ping.")
+async def ping(ctx):
+    await ctx.send(f"Pong! ({round(bot.latency * 1000)}ms)")
+
+client.add_command(ping)
+
 threading.Thread(target=run_server, daemon=True).start()
 client.run(os.environ['DISCORD_TOKEN'])
