@@ -39,7 +39,7 @@ async def generate_response(memory_context, immediate_context, personality="norm
     async with aiofiles.open(file_path, mode='r') as f:
         contents = await f.read()
         metadata = json.loads(contents)
-    loaded_memory = metadata["summary"]
+    memory = metadata["summary"]
     #handle metadata for Kaelum
     for m in groq_queue:
         can_go = None
@@ -57,7 +57,7 @@ async def generate_response(memory_context, immediate_context, personality="norm
             #handle memory and recursive summarization, always update his memory even if he doesn't respond
             summary = await client.chat.completions.create(model=m, messages=[
                 {"role": "system", "content": summary_sysins},
-                {"role": "user", "content": f"You will be given Kaelum's current memory and the last few messages. summarize this, and ensure the summary is shorter than the input. OVERALL MEMORY: {loaded_memory}, CONTEXT: {memory_context}"}],
+                {"role": "user", "content": f"You will be given Kaelum's current memory and the last few messages. summarize this, and ensure the summary is shorter than the input. OVERALL MEMORY: {memory}, CONTEXT: {memory_context}"}],
                     temperature=0.2)
             memory = summary.choices[0].message.content.strip()
             print(memory)
@@ -79,7 +79,7 @@ async def generate_response(memory_context, immediate_context, personality="norm
                 try:
                     response = await gemini_client.aio.models.generate_content(
                         model=m,
-                        contents=f"context: {context} \nUSE GOOGLE SEARCH FOR MISSING INFORMATION IF NECESSARY.  Kaelum: ",
+                        contents=f"context: {memory_context} \nUSE GOOGLE SEARCH FOR MISSING INFORMATION IF NECESSARY.  Kaelum: ",
                         config=config,
                     )
                     gemini_queue.pop(gemini_queue.index(m))
