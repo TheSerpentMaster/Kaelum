@@ -8,7 +8,7 @@ import random
 from openai import AsyncOpenAI
 from google import genai
 from google.genai import types
-from system_instructions import filter_prompt, groq_sysins, gemini_sysins, annoying_sysins, summary_sysins
+from .system_instructions import filter_prompt, groq_sysins, gemini_sysins, annoying_sysins, summary_sysins
 #initialize apis
 client = AsyncOpenAI(
   base_url="https://api.groq.com/openai/v1",
@@ -30,12 +30,13 @@ annoying_config = types.GenerateContentConfig(
     tools=[grounding_tool],
     system_instruction=annoying_sysins
 )
+base_path = os.path.dirname(__file__)
+file_path = os.path.join(base_path, 'kaelum_memory.json')
 gemini_queue = ["gemini-3.1-pro-preview", "gemini-3-pro-preview", "gemini-2.5-pro", "gemini-2.5-flash-lite", "gemini-2.5-flash-lite-preview", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
-
 groq_queue = ["groq/compound-mini", "groq/compound", "llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-120b"]
 async def generate_response(memory_context, immediate_context, personality="normal"):
     #load Kaleum's memory
-    async with aiofiles.open('kaelum_memory.json', mode='r') as f:
+    async with aiofiles.open(file_path, mode='r') as f:
         contents = await f.read()
         metadata = json.loads(contents)
     loaded_memory = metadata["summary"]
@@ -62,7 +63,7 @@ async def generate_response(memory_context, immediate_context, personality="norm
             print(memory)
             #save new memory
             metadata["summary"] = memory
-            async with aiofiles.open('kaelum_memory.json', mode='w') as f:
+            async with aiofiles.open(file_path, mode='w') as f:
                 json_string = json.dumps(metadata, indent=4)
                 await f.write(json_string)
             if can_go != None:
@@ -95,7 +96,7 @@ async def generate_response(memory_context, immediate_context, personality="norm
                     final_output = await client.chat.completions.create(
                         model= m,
                         messages=[
-                            {"role": "system", "content": groq_sum},
+                            {"role": "system", "content": groq_sysins},
                             {"role": "user", "content": f"Kaelum's memory: {memory}, last few messages: {immediate_context}, Kaelum's response: "}
                         ],
                         temperature=0.4,
