@@ -49,7 +49,15 @@ async def generate_response(memory_context, immediate_context, personality="norm
                 model=m,
                 messages=[
                     {"role": "system", "content": filter_prompt},
-                    {"role": "user", "content": f"context: {memory_context} \nCan Kaelum respond?"}
+                    {"role": "user", "content": f"""
+Previous memory:
+{memory}
+
+New messages:
+{memory_context}
+
+Update Kaelum's memory summary.
+"""}
                 ],
                  temperature=0.1,
                  max_tokens=3
@@ -57,7 +65,15 @@ async def generate_response(memory_context, immediate_context, personality="norm
             #handle memory and recursive summarization, always update his memory even if he doesn't respond
             summary = await client.chat.completions.create(model=m, messages=[
                 {"role": "system", "content": summary_sysins},
-                {"role": "user", "content": f"You will be given Kaelum's current memory and the last few messages. summarize this, and ensure the summary is shorter than the input. OVERALL MEMORY (dont focus too much on this, just further summarize and shorten it, really js some context): {memory}, RECENT MESSAGES(this is what kaelum needs to know, you can focus onthis): {memory_context}"}],
+                {"role": "user", "content": f"""
+Previous memory:
+{memory}
+
+New messages:
+{memory_context}
+
+Update Kaelum's memory summary.
+"""}],
                     temperature=0.2)
             memory = summary.choices[0].message.content.strip()
             print(memory)
@@ -80,7 +96,7 @@ async def generate_response(memory_context, immediate_context, personality="norm
                     response = await gemini_client.aio.models.generate_content(
                         model=m,
                         contents=f"context: {memory_context} \nUSE GOOGLE SEARCH FOR MISSING INFORMATION IF NECESSARY.  Kaelum: ",
-                        config=config,
+                        config=norm_config,
                     )
                     gemini_queue.pop(gemini_queue.index(m))
                     gemini_queue.insert(0, m)
@@ -97,7 +113,16 @@ async def generate_response(memory_context, immediate_context, personality="norm
                         model= m,
                         messages=[
                             {"role": "system", "content": groq_sysins},
-                            {"role": "user", "content": f"Kaelum's memory: {memory}, last few messages: {immediate_context}, Kaelum's response: "}
+                            {"role": "user", "content": f"""
+Conversation summary:
+{memory}
+
+Recent messages:
+{immediate_context}
+
+What would Kaelum say next?
+"""}
+                         #   {"role": "user", "content": f"Kaelum's memory: {memory}, last few messages: {immediate_context}, Kaelum's response: "}
                         ],
                         temperature=0.4,
                         presence_penalty=1.2,
