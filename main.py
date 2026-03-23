@@ -18,9 +18,9 @@ class Client(commands.Bot):
         cogs_folder = f"{os.path.abspath(os.path.dirname(__file__))}/cogs"
         for filename in os.listdir(cogs_folder):
             print(filename)
-            if filename.endswith(".py") and filename != "ping.py":
-                await client.load_extension(f"cogs.{filename[:-3]}")
-        await client.tree.sync()
+            if filename.endswith(".py"):
+                await self.load_extension(f"cogs.{filename[:-3]}")
+        await self.tree.sync()
         print("Loaded cogs")
 
 class Handler(BaseHTTPRequestHandler):

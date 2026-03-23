@@ -59,6 +59,9 @@ class Listen(commands.Cog):
                 messages.reverse()
                 memory_context = "\n".join(f"{m.author.name}: {m.content}" for m in messages if m.content)
                 immediate_context = "\n".join(f"{m.author.name}: {m.content}" for m in messages[5:] if m.content)
+                response = None
+                redacted_response = None
+                redacted_response2 = None
 
                 try:
                     async with message.channel.typing():
@@ -73,6 +76,8 @@ class Listen(commands.Cog):
 
                 except Exception as e:
                     await message.channel.send(f"AI ERROR: {e}")
+                    await self.bot.process_commands(message)
+                    return
                 if redacted_response2:
                     await message.channel.send(redacted_response2)
                 elif redacted_response:
@@ -89,6 +94,9 @@ class Listen(commands.Cog):
 
     @discord.app_commands.command(name="listen", description="Begins listening in the current channel.")
     async def listen(self, interaction: discord.Interaction):
+        if not getattr(interaction.user.guild_permissions, "manage_channels", False):
+            await interaction.response.send_message("You need Manage Channels to do that.", ephemeral=True)
+            return
         channel_id = interaction.channel.id
         if channel_id in self.listening_channels:
             await interaction.response.send_message("Already listening in current channel!", ephemeral=True)
@@ -98,6 +106,9 @@ class Listen(commands.Cog):
 
     @discord.app_commands.command(name="purge", description="Stops listening in the current channel.")
     async def purge(self, interaction: discord.Interaction):
+        if not getattr(interaction.user.guild_permissions, "manage_channels", False):
+            await interaction.response.send_message("You need Manage Channels to do that.", ephemeral=True)
+            return
         channel_id = interaction.channel.id
         if channel_id not in self.listening_channels:
             await interaction.response.send_message("Not already listening in current channel!", ephemeral=True)
