@@ -1,3 +1,5 @@
+# WORK OF DREW727, THESERPENTMASTER, AND GUSTYCUBE
+
 import logging
 import asyncio
 logging.basicConfig(
