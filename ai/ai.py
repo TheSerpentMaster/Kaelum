@@ -58,7 +58,7 @@ Previous memory:
 New messages:
 {memory_context}
 
-Update Kaelum's memory summary.
+Should Kaelum respond? (using previous memory as some bg information about context and deciding based on new messages)
 """}
                 ],
                  temperature=0.1,
@@ -76,7 +76,7 @@ New messages:
 
 Update Kaelum's memory summary.
 """}],
-                    temperature=0.2)
+                    temperature=1.5)
             memory = summary.choices[0].message.content.strip()
             print(memory)
             #save new memory
@@ -126,16 +126,14 @@ What would Kaelum say next?
 """}
                          #   {"role": "user", "content": f"Kaelum's memory: {memory}, last few messages: {immediate_context}, Kaelum's response: "}
                         ],
-                        temperature=0.4,
-                        presence_penalty=1.2,
-                        frequency_penalty=1.2,
+                        temperature=1.5,
                         stop=["@everyone", "nigg"]
                     )
                     response = final_output.choices[0].message.content.strip()
                     groq_queue.pop(groq_queue.index(m))
                     groq_queue.insert(0, m)
 
-                    return response
+                    return response + ";;"
                 except Exception as e:
                     error = str(e)
                     continue
