@@ -18,7 +18,11 @@ jobs:
           python-version: "3.11"
 
       - name: Install test dependencies
-        run: python -m pip install --upgrade pip discord.py
+        run: |
+          python -m pip install --upgrade pip
+          pip install discord.py groq aiofiles google-generativeai
+          pip install -e membrane_source/clients/python
+        
 
       - name: Compile Python sources
         run: python -m compileall main.py ai cogs tests
