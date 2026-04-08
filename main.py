@@ -5,7 +5,7 @@ import threading
 import json # Added import
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from dotenv import load_dotenv
-
+import membrane
 load_dotenv()
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 MEMORY_FILE = os.path.join(BASE_DIR, "ai", "kaelum_memory.json")

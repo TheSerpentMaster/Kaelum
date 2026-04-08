@@ -1,5 +1,3 @@
-# WORK OF DREW727, THESERPENTMASTER, AND GUSTYCUBE
-
 import logging
 import asyncio
 logging.basicConfig(
@@ -47,6 +45,7 @@ class Listen(commands.Cog):
             1305221609539244090: generate_response,
             1360298343762362368: generate_response
         }
+        self.response_records = {}
 
     # When a message is sent in any of the listening channels, check the previous 7 messages in that channel for context and convert it to json
 
@@ -60,7 +59,7 @@ class Listen(commands.Cog):
                 messages = [msg async for msg in message.channel.history(limit=10)]
                 messages.reverse()
                 memory_context = "\n".join(f"{m.author.name}: {m.content}" for m in messages if m.content)
-                immediate_context = "\n".join(f"{m.author.name}: {m.content}" for m in messages[5:] if m.content)
+                immediate_context = "\n".join(f"{m.author.name}: {m.content}" for m in messages[-1:] if m.content)
                 response = None
                 redacted_response = None
                 redacted_response2 = None
@@ -68,14 +67,14 @@ class Listen(commands.Cog):
                 try:
                     async with message.channel.typing():
 
-                        response = await self.listening_channels[message.channel.id](memory_context, immediate_context)# Generate the response
+                        response = await self.listening_channels[message.channel.id](memory_context, immediate_context)# We'll add user name and user id later
                         if response:
                             redacted_response = response.replace("@here", "[REDACTED MASS PING]")
                             redacted_response2 = redacted_response.replace("@everyone", "[REDACTED MASS PING]")
                         else:
                             redacted_response = None
                             redacted_response2 = None
-
+                #on_reaction_add handler will go here later for positive reinforcement
                 except Exception as e:
                     await message.channel.send(f"AI ERROR: {e}")
                     await self.bot.process_commands(message)

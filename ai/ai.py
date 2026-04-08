@@ -10,7 +10,14 @@ from google import genai
 from google.genai import types
 from .system_instructions import filter_prompt, groq_sysins, gemini_sysins, annoying_sysins, summary_sysins
 from dotenv import load_dotenv
+from membrane import MembraneClient, Sensitivity, TrustContext, MemoryType # import membrane
+
+#load env vars
 load_dotenv()
+
+#initialize membrane client
+membrane_client = MembraneClient("localhost:9090")
+
 #initialize apis
 client = AsyncOpenAI(
   base_url="https://api.groq.com/openai/v1",
@@ -36,6 +43,116 @@ base_path = os.path.dirname(__file__)
 file_path = os.path.join(base_path, 'kaelum_memory.json')
 gemini_queue = ["gemini-3.1-pro-preview", "gemini-3-pro-preview", "gemini-2.5-pro", "gemini-2.5-flash-lite", "gemini-2.5-flash-lite-preview", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
 groq_queue = ["groq/compound-mini", "groq/compound", "llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-120b"]
+
+async def generate_response(memory_context, immediate_context, personality="normal", user_id=None, user_name=None):
+    # remember IMMEDIATE CONTEXT IS ONLY 1, MOMOR IS ONLY 10
+
+    for m in groq_queue:
+        can_go = None
+        try:
+            #decide whether kaleum responds
+            can_go = await client.chat.completions.create(
+                model=m,
+                messages=[
+                    {"role": "system", "content": filter_prompt},
+                    {"role": "user", "content": f"""
+
+                        Recent messages:
+                        {memory_context}
+
+                        Should Kaelum respond? (using previous memory as some bg information about context and deciding based on new messages)
+                        """}
+                ],
+                 temperature=0.15,
+                 max_tokens=3
+            )
+
+            #write memory(most recent message) into membrane. This will compile over time
+            summary_with_user = immediate_context
+            tags = ["recent", "conversation", "thinking background"]
+            if user_id:
+                tags.append(f"user:{user_id}")
+            record = membrane_client.ingest_event(source="chat", event_kind="recent message", ref="kaelum-session", summary=summary_with_user, scope="kaelum", tags=tags)
+
+            if can_go != None:
+                groq_queue.pop(groq_queue.index(m))
+                groq_queue.insert(0, m)
+                break
+        except Exception as e:
+            continue
+    error = "All Models Hit Rate Limits"
+    if can_go and 'Y' in can_go.choices[0].message.content.strip().upper():
+        #generate query
+        query = None
+        for m in groq_queue:
+            try:
+                task_descriptor = await client.chat.completions.create(
+                    model=m,
+                    messages=[
+                        {"role": "system", "content": "Generate a brief search query (3-5 words) describing what information the user, Kaelum, would need to know in order to respond based on recent messages."
+                        " The query should be specific enough to retrieve relevant information from a vector database, but broad enough to capture all relevant information."},
+                        {"role": "user", "content": memory_context}
+                   ],
+                    temperature=0.3,
+                    max_tokens=20
+                )
+                query = task_descriptor.choices[0].message.content.strip()
+                break
+            except Exception as e:
+                error = str(e)
+                continue
+        if not query:
+            return f"memory retrieval failed, MODEL ERROR: {error}"
+        #now retrieve memories
+        retrieved_memories = membrane_client.retrieve(query, limit=5)
+        memory_text = "\n".join([r.summary for r in retrieved_memories])
+        try:
+            for m in gemini_queue:
+                try:
+                    response = await gemini_client.aio.models.generate_content(
+                        model=m,
+                        contents=f"context: {memory_context}, some retrieved memories to help fill missing information: {memory_text}, Kaelum's response: ",
+                        config=norm_config,
+                    )
+                    gemini_queue.pop(gemini_queue.index(m))
+                    gemini_queue.insert(0, m)
+                    return response.text
+                except Exception as e:
+                    error = str(e)
+                    continue
+
+            raise Exception("All Gemini models failed")
+        except Exception as e:
+            for m in groq_queue:
+                try:
+                    final_output = await client.chat.completions.create(
+                        model= m,
+                        messages=[
+                            {"role": "system", "content": groq_sysins},
+                            {"role": "user", "content": f"""
+                                Recent messages:
+                                {memory_context}
+                                Some retrieved memories to help fill missing information:
+                                {memory_text}
+                                What would Kaelum say next?"""}
+                        ],
+                        temperature=1.0,
+                        stop=["@everyone", "nigg"]
+                    )
+                    response = final_output.choices[0].message.content.strip()
+                    groq_queue.pop(groq_queue.index(m))
+                    groq_queue.insert(0, m)
+                    #write memory i, record.idnto membrane now
+                    return response
+                except Exception as e:
+                    error = str(e)
+                    continue
+            return f"MODEL ERROR: {error}"
+    else:
+        return
+    return None
+
+#original logic for fallback just in case membrane fails
 async def generate_response(memory_context, immediate_context, personality="normal"):
     #load Kaleum's memory
     async with aiofiles.open(file_path, mode='r') as f:
@@ -143,7 +260,7 @@ What would Kaelum say next?
     return None
 
 
-async def annoying_response(memory_context, context):
+async def annoying_response(memory_context, context, user_id=None, user_name=None):
     try:
         for m in gemini_queue:
             try:
